@@ -127,13 +127,14 @@ public class Login {
      * @return true if valid, false otherwise.
      */
     public boolean checkCellPhoneNumber() {
-        if (cellPhoneNumber == null) {
+        if (cellPhoneNumber == null) // Check for null to avoid NullPointerException
+        {
             return false;
         }
 
         // ^\\+27  : Starts with international country code '+27'
         // [0-9]{9}$ : Followed by exactly 9 numerical digits
-        String phoneRegex = "^\\+27[0-9]{9}$";
+        String phoneRegex = "^\\+27[0-9]{9}$"; //checks for +27 followed by 9 digits
 
         if (cellPhoneNumber.matches(phoneRegex)) {
             return true;
