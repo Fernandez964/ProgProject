@@ -118,28 +118,19 @@ public class Login {
 
     /**
      * Checks if the South African cell phone number contains international country code (+27)
-     * followed by 9 digits (10 digits total national number length).
-     * 
+     * followed by 9 digits.
+     *
+     * The format is defined once in {@link CellNumber} and is shared with the message
+     * recipient validation, so a number that is accepted here is also accepted there.
+     *
      * REGEX ATTRIBUTION / REFERENCE:
      * Pattern follows South African International E.164 telecommunication formatting rules.
      * Reference: https://regex101.com/ (South Africa Mobile Number Regex Standard)
-     * 
+     *
      * @return true if valid, false otherwise.
      */
     public boolean checkCellPhoneNumber() {
-        if (cellPhoneNumber == null) {
-            return false;
-        }
-
-        // ^\\+27  : Starts with international country code '+27'
-        // [0-9]{9}$ : Followed by exactly 9 numerical digits
-        String phoneRegex = "^\\+27[0-9]{9}$";
-
-        if (cellPhoneNumber.matches(phoneRegex)) {
-            return true;
-        } else {
-            return false;
-        }
+        return CellNumber.isValid(cellPhoneNumber);
     }
 
     /**
