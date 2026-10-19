@@ -28,13 +28,33 @@ public class MessageTest {
     }
 
     @Test
+    public void testCheckRecipientCellAcceptsLocalFormat() {
+        Message message = new Message(1, "0838968976", "Hello there");
+        assertTrue(message.checkRecipientCell(), "A number in local format should pass.");
+    }
+
+    @Test
+    public void testLocalCellNumberIsNormalisedToInternational() {
+        Message message = new Message(1, "0838968976", "Hello there");
+        assertEquals("+27838968976", message.getRecipientCell(),
+                "A local number should be stored in the international format.");
+    }
+
+    @Test
+    public void testInternationalCellNumberIsKept() {
+        Message message = new Message(1, "+27838968976", "Hello there");
+        assertEquals("+27838968976", message.getRecipientCell(),
+                "An international number should be kept as it is.");
+    }
+
+    @Test
     public void testCheckRecipientCellInvalid() {
-        assertFalse(new Message(1, "0839653210", "Hello there").checkRecipientCell(),
-                "A local format number should fail.");
         assertFalse(new Message(1, "+2783896897", "Hello there").checkRecipientCell(),
                 "A number with too few digits should fail.");
         assertFalse(new Message(1, "+278389689760", "Hello there").checkRecipientCell(),
                 "A number with too many digits should fail.");
+        assertFalse(new Message(1, "27838968976", "Hello there").checkRecipientCell(),
+                "A number without a country code should fail.");
         assertFalse(new Message(1, null, "Hello there").checkRecipientCell(),
                 "A missing number should fail.");
     }
@@ -56,10 +76,23 @@ public class MessageTest {
     }
 
     @Test
+    public void testCheckMessageLengthAllows250Characters() {
+        Message message = new Message(1, "+27838968976", "a".repeat(250));
+        assertTrue(message.checkMessageLength(), "A message of 250 characters should pass.");
+    }
+
+    @Test
     public void testCheckMessageLengthTooLong() {
-        String tooLong = "a".repeat(250);
+        String tooLong = "a".repeat(251);
         Message message = new Message(1, "+27838968976", tooLong);
-        assertFalse(message.checkMessageLength(), "A message of 250 characters should fail.");
+        assertFalse(message.checkMessageLength(), "A message of more than 250 characters should fail.");
+    }
+
+    @Test
+    public void testLengthExceededMessage() {
+        Message message = new Message(1, "+27838968976", "a".repeat(253));
+        assertEquals("Message exceeds 250 characters by 3 characters; please reduce the size.",
+                message.lengthExceededMessage(), "The message should state by how many characters the text is too long.");
     }
 
     // --- Message Hash Tests ---
@@ -85,26 +118,41 @@ public class MessageTest {
         assertEquals(expected, message.getMessageHash(), "Words that contain digits should keep them.");
     }
 
+    @Test
+    public void testCreateMessageHashWithSuppliedMessageID() {
+        Message message = new Message(7, "+27838968976", "Hello world this is a test", "1234567890");
+        assertEquals("1234567890", message.getMessageID(), "The supplied ID should be used.");
+        assertEquals("12:7:HELLOTEST", message.getMessageHash(), "A supplied ID should give a predictable hash.");
+    }
+
+    @Test
+    public void testWithMessageIdFactory() {
+        Message message = Message.withMessageId(2, "0838968976", "Send later", "9876543210");
+        assertEquals("9876543210", message.getMessageID(), "The supplied ID should be used.");
+        assertEquals("98:2:SENDLATER", message.getMessageHash(), "A supplied ID should give a predictable hash.");
+        assertEquals("+27838968976", message.getRecipientCell(), "A local number should be normalised.");
+    }
+
     // --- Send / Store / Disregard Tests ---
 
     @Test
     public void testSentMessageStatusSent() {
         Message message = new Message(1, "+27838968976", "Hello there");
-        assertEquals("Message successfully sent.", message.sentMessage(1));
+        assertEquals("Message ready to send.", message.sentMessage(1));
         assertEquals("Sent", message.getMessageStatus(), "Status should be Sent.");
     }
 
     @Test
     public void testSentMessageStatusDisregarded() {
         Message message = new Message(1, "+27838968976", "Hello there");
-        assertEquals("Press 0 to delete the message", message.sentMessage(2));
+        assertEquals("Press 0 to delete the message.", message.sentMessage(2));
         assertEquals("Disregarded", message.getMessageStatus(), "Status should be Disregarded.");
     }
 
     @Test
     public void testSentMessageStatusStored() {
         Message message = new Message(1, "+27838968976", "Hello there");
-        assertEquals("Message successfully stored.", message.sentMessage(3));
+        assertEquals("Message ready to send.", message.sentMessage(3));
         assertEquals("Stored", message.getMessageStatus(), "Status should be Stored.");
     }
 

@@ -28,10 +28,46 @@ public class Message {
     // Constructor
     public Message(int messageNumber, String recipientCell, String messageContent) {
         this.messageNumber = messageNumber;
-        this.recipientCell = recipientCell;
+        this.recipientCell = CellNumber.normalize(recipientCell);
         this.messageContent = messageContent;
         this.messageID = generateMessageID();
         this.messageHash = buildMessageHash();
+    }
+
+    /**
+     * Creates a message with a known message ID.
+     *
+     * This is used by the tests so the message hash can be asserted exactly.
+     * A local cell number is still normalised to the international format.
+     *
+     * @param messageNumber the number of the message.
+     * @param recipientCell the recipient cell number.
+     * @param messageContent the message text.
+     * @param messageID the message ID to use, a random one is used when it is missing.
+     */
+    public Message(int messageNumber, String recipientCell, String messageContent, String messageID) {
+        this.messageNumber = messageNumber;
+        this.recipientCell = CellNumber.normalize(recipientCell);
+        this.messageContent = messageContent;
+        this.messageID = (messageID == null || messageID.trim().isEmpty())
+                ? generateMessageID()
+                : messageID.trim();
+        this.messageHash = buildMessageHash();
+        USED_MESSAGE_IDS.add(this.messageID);
+    }
+
+    /**
+     * Creates a message with a known message ID.
+     *
+     * @param messageNumber the number of the message.
+     * @param recipientCell the recipient cell number.
+     * @param messageContent the message text.
+     * @param messageID the message ID to use.
+     * @return the message with the given ID.
+     */
+    public static Message withMessageId(int messageNumber, String recipientCell,
+                                         String messageContent, String messageID) {
+        return new Message(messageNumber, recipientCell, messageContent, messageID);
     }
 
     /**
@@ -52,7 +88,7 @@ public class Message {
                     String messageContent, String messageHash, String messageStatus) {
         this.messageID = messageID;
         this.messageNumber = messageNumber;
-        this.recipientCell = recipientCell;
+        this.recipientCell = CellNumber.normalize(recipientCell);
         this.messageContent = messageContent;
         this.messageHash = (messageHash == null || messageHash.isEmpty())
                 ? buildMessageHash()
@@ -124,10 +160,20 @@ public class Message {
     }
 
     /**
-     * Validates message length requirement (less than 250 characters).
+     * Validates message length requirement (250 characters or less).
      */
     public boolean checkMessageLength() {
-        return messageContent != null && messageContent.length() < MAX_MESSAGE_LENGTH;
+        return messageContent != null && messageContent.length() <= MAX_MESSAGE_LENGTH;
+    }
+
+    /**
+     * Returns the message shown when the text is too long.
+     *
+     * @return the sentence that states by how many characters the message is too long.
+     */
+    public String lengthExceededMessage() {
+        int excess = messageContent == null ? 0 : messageContent.length() - MAX_MESSAGE_LENGTH;
+        return "Message exceeds 250 characters by " + excess + " characters; please reduce the size.";
     }
 
     /**
@@ -180,13 +226,13 @@ public class Message {
         switch (choice) {
             case 1:
                 this.messageStatus = "Sent";
-                return "Message successfully sent.";
+                return "Message ready to send.";
             case 2:
                 this.messageStatus = "Disregarded";
-                return "Press 0 to delete the message";
+                return "Press 0 to delete the message.";
             case 3:
                 this.messageStatus = "Stored";
-                return "Message successfully stored.";
+                return "Message ready to send.";
             default:
                 this.messageStatus = "Pending";
                 return "Invalid option selected.";

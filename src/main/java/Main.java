@@ -140,8 +140,7 @@ public class Main {
 
             // Check message length validation
             if (!msg.checkMessageLength()) {
-                int excess = msgText.length() - Message.MAX_MESSAGE_LENGTH;
-                System.out.println("Please enter a message of less than 250 characters. (Exceeds by " + excess + " characters)");
+                System.out.println(msg.lengthExceededMessage());
                 continue;
             }
 

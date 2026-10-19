@@ -45,6 +45,13 @@ public class LoginTest {
     }
 
     @Test
+    public void testCheckCellPhoneNumberAcceptsLocalFormat() {
+        Login login = new Login();
+        login.setCellPhoneNumber("0838968976");
+        assertTrue(login.checkCellPhoneNumber(), "A cell number in local format should pass.");
+    }
+
+    @Test
     public void testCheckCellPhoneNumberInvalid() {
         Login login = new Login();
         login.setCellPhoneNumber("08966553");
