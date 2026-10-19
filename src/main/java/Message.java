@@ -1,5 +1,6 @@
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
@@ -31,6 +32,67 @@ public class Message {
         this.messageContent = messageContent;
         this.messageID = generateMessageID();
         this.messageHash = buildMessageHash();
+    }
+
+    /**
+     * Rebuilds a message that was read back from the JSON file.
+     *
+     * The stored ID and hash are kept as they are so a message keeps its
+     * identity between sessions, and the ID is registered as used so a new
+     * message can never be given the same one.
+     *
+     * @param messageID the stored message ID.
+     * @param messageNumber the stored message number.
+     * @param recipientCell the stored recipient cell number.
+     * @param messageContent the stored message text.
+     * @param messageHash the stored message hash.
+     * @param messageStatus the stored status.
+     */
+    private Message(String messageID, int messageNumber, String recipientCell,
+                    String messageContent, String messageHash, String messageStatus) {
+        this.messageID = messageID;
+        this.messageNumber = messageNumber;
+        this.recipientCell = recipientCell;
+        this.messageContent = messageContent;
+        this.messageHash = (messageHash == null || messageHash.isEmpty())
+                ? buildMessageHash()
+                : messageHash;
+        this.messageStatus = messageStatus;
+        USED_MESSAGE_IDS.add(messageID);
+    }
+
+    /**
+     * Builds a message from the JSON object produced by {@link #storeMessageJSON()}.
+     *
+     * @param json a single message object.
+     * @return the restored message, or null when the object is missing required fields.
+     */
+    public static Message fromJSON(String json) {
+        Map<String, String> values;
+        try {
+            values = Json.parseObject(json);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+
+        String messageID = values.get("messageID");
+        String recipientCell = values.get("recipientCell");
+        String messageContent = values.get("messageContent");
+        String messageNumber = values.get("messageNumber");
+
+        if (messageID == null || recipientCell == null || messageContent == null || messageNumber == null) {
+            return null;
+        }
+
+        int number;
+        try {
+            number = Integer.parseInt(messageNumber.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+
+        String status = values.get("status");
+        return new Message(messageID, number, recipientCell, messageContent, values.get("messageHash"), status);
     }
 
     /**
@@ -133,15 +195,18 @@ public class Message {
 
     /**
      * Stores the message in a JSON format representation (Research requirement).
+     *
+     * Every value is escaped so the result stays valid JSON even when the
+     * message text contains quotes or line breaks.
      */
     public String storeMessageJSON() {
         return "{\n" +
-               "  \"messageID\": \"" + messageID + "\",\n" +
+               "  \"messageID\": \"" + Json.escape(messageID) + "\",\n" +
                "  \"messageNumber\": " + messageNumber + ",\n" +
-               "  \"recipientCell\": \"" + recipientCell + "\",\n" +
-               "  \"messageContent\": \"" + messageContent + "\",\n" +
-               "  \"messageHash\": \"" + messageHash + "\",\n" +
-               "  \"status\": \"" + (messageStatus != null ? messageStatus : "Pending") + "\"\n" +
+               "  \"recipientCell\": \"" + Json.escape(recipientCell) + "\",\n" +
+               "  \"messageContent\": \"" + Json.escape(messageContent) + "\",\n" +
+               "  \"messageHash\": \"" + Json.escape(messageHash) + "\",\n" +
+               "  \"status\": \"" + Json.escape(messageStatus != null ? messageStatus : "Pending") + "\"\n" +
                "}";
     }
 

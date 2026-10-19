@@ -12,7 +12,8 @@ message handling, built with Maven and tested using JUnit 5.
 * **Phone Number Formatting**: Validates South African mobile numbers using international format (`+27` followed by 9 digits). The rule lives in `CellNumber` and is shared by registration and message recipients.
 * **User Authentication**: Verifies login credentials against saved registration data, with three attempts allowed.
 * **Message Handling**: Unique 10-digit message IDs, recipient and content validation, message hashing, and send / store / disregard options.
-* **Unit Testing**: 29 JUnit 5 tests covering the login and messaging classes.
+* **JSON Persistence**: Messages are written to `quickchat-messages.json` and read back on the next run, using a hand written JSON writer and parser (no external library).
+* **Unit Testing**: 45 JUnit 5 tests covering the login, messaging, JSON and message store classes.
 
 ---
 
@@ -23,13 +24,17 @@ message handling, built with Maven and tested using JUnit 5.
 └── src
     ├── main
     │   └── java
-    │       ├── CellNumber.java   # Shared international cell number rule
-    │       ├── Login.java        # Registration, validation and login
-    │       ├── Main.java         # Console entry point
-    │       └── Message.java      # Message creation, validation and hashing
+    │       ├── CellNumber.java    # Shared international cell number rule
+    │       ├── Json.java          # Hand written JSON writer and parser
+    │       ├── Login.java         # Registration, validation and login
+    │       ├── Main.java          # Console entry point
+    │       ├── Message.java       # Message creation, validation and hashing
+    │       └── MessageStore.java  # Keeps, prints and persists the messages
     └── test
         └── java
+            ├── JsonTest.java
             ├── LoginTest.java
+            ├── MessageStoreTest.java
             └── MessageTest.java
 ```
 
@@ -58,5 +63,32 @@ mvn test
 | Recipient cell | International format, `+27` followed by 9 digits |
 | Message content | Less than 250 characters |
 | Message hash | `first two ID digits : message number : FIRST AND LAST word` |
+
+---
+
+## 💾 Message File
+
+| Menu option | Action |
+| --- | --- |
+| 1 | Send messages |
+| 2 | Show the messages that are kept in the store |
+| 3 | Write the messages to `quickchat-messages.json` |
+| 4 | Read the messages back from `quickchat-messages.json` |
+| 5 | Quit |
+
+The file holds a JSON array with one object per message:
+
+```json
+[
+  {
+    "messageID": "1234567890",
+    "messageNumber": 1,
+    "recipientCell": "+27838968976",
+    "messageContent": "Hello there",
+    "messageHash": "12:1:HELLOTHERE",
+    "status": "Sent"
+  }
+]
+```
 
 ---

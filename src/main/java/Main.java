@@ -1,11 +1,14 @@
-import java.util.ArrayList;
-import java.util.List;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Scanner;
 
 public class Main {
 
     /** Number of login attempts allowed before the program ends. */
     private static final int MAX_LOGIN_ATTEMPTS = 3;
+
+    /** File the messages are written to and read from. */
+    private static final Path MESSAGE_FILE = Path.of(MessageStore.DEFAULT_FILE_NAME);
 
     public static void main(String[] args) {
         try (Scanner scanner = new Scanner(System.in)) {
@@ -42,36 +45,46 @@ public class Main {
 
         System.out.println("\nWelcome to QuickChat.");
 
-        List<Message> sentMessagesList = new ArrayList<>();
-        List<Message> storedMessagesList = new ArrayList<>();
-        int totalMessagesSent = 0;
+        MessageStore store = new MessageStore(MESSAGE_FILE);
+        loadMessages(store);
+
         boolean running = true;
 
         while (running) {
             System.out.println("\n--- QUICKCHAT MENU ---");
             System.out.println("1) Send Messages");
             System.out.println("2) Show recently sent messages");
-            System.out.println("3) Quit");
+            System.out.println("3) Save messages to file");
+            System.out.println("4) Load messages from file");
+            System.out.println("5) Quit");
 
-            int choice = readMenuChoice(scanner, "Choose an option: ", 1, 3);
+            int choice = readMenuChoice(scanner, "Choose an option: ", 1, 5);
 
             switch (choice) {
                 case 1:
-                    totalMessagesSent = captureMessages(scanner, sentMessagesList, storedMessagesList, totalMessagesSent);
-                    System.out.println("\nTotal number of messages processed: " + totalMessagesSent);
+                    captureMessages(scanner, store);
+                    System.out.println("\nTotal number of messages processed: " + store.returnTotalMessages());
                     break;
 
                 case 2:
-                    showMessages(sentMessagesList, storedMessagesList);
+                    store.printMessages();
                     break;
 
                 case 3:
+                    saveMessages(store);
+                    break;
+
+                case 4:
+                    loadMessages(store);
+                    break;
+
+                case 5:
                     running = false;
                     System.out.println("Thank you for using QuickChat. Goodbye!");
                     break;
 
                 default:
-                    System.out.println("Invalid choice. Please select 1, 2, or 3.");
+                    System.out.println("Invalid choice. Please select 1, 2, 3, 4 or 5.");
             }
         }
     }
@@ -106,11 +119,8 @@ public class Main {
 
     /**
      * Captures the requested number of messages, validating each one before it is accepted.
-     *
-     * @return the running total of messages captured.
      */
-    private static int captureMessages(Scanner scanner, List<Message> sentMessagesList,
-                                       List<Message> storedMessagesList, int totalMessagesSent) {
+    private static void captureMessages(Scanner scanner, MessageStore store) {
         int numMessages = readInt(scanner, "How many messages do you wish to enter? ", 1, Integer.MAX_VALUE);
         int captured = 0;
 
@@ -126,7 +136,7 @@ public class Main {
             System.out.println("Cell phone number successfully captured.");
 
             String msgText = readRawLine(scanner, "Enter Message (max 250 characters): ");
-            Message msg = new Message(totalMessagesSent + 1, recipient, msgText);
+            Message msg = new Message(store.returnTotalMessages() + 1, recipient, msgText);
 
             // Check message length validation
             if (!msg.checkMessageLength()) {
@@ -148,17 +158,13 @@ public class Main {
             String actionResult = msg.sentMessage(actionChoice);
             System.out.println(actionResult);
 
-            if ("Sent".equals(msg.getMessageStatus())) {
-                sentMessagesList.add(msg);
-            } else if ("Stored".equals(msg.getMessageStatus())) {
-                storedMessagesList.add(msg);
-            } else {
+            if (!"Sent".equals(msg.getMessageStatus()) && !"Stored".equals(msg.getMessageStatus())) {
                 // Disregarded messages are only kept when the user confirms the deletion
                 readInt(scanner, "Press 0 to delete the message: ", 0, 0);
             }
 
+            store.recordMessage(msg);
             captured++;
-            totalMessagesSent++;
 
             // Display full summary of the message
             System.out.println("\n--- Message Summary ---");
@@ -168,39 +174,34 @@ public class Main {
             System.out.println("Message: " + msg.getMessageContent());
             System.out.println("Status: " + msg.getMessageStatus());
         }
-
-        return totalMessagesSent;
     }
 
     /**
-     * Prints the messages that were sent and the ones that were stored for later.
+     * Writes the messages of the store to the JSON file.
      */
-    private static void showMessages(List<Message> sentMessagesList, List<Message> storedMessagesList) {
-        if (sentMessagesList.isEmpty() && storedMessagesList.isEmpty()) {
-            System.out.println("No messages have been sent yet.");
-            return;
-        }
-
-        for (Message msg : sentMessagesList) {
-            printMessage(msg);
-        }
-
-        for (Message msg : storedMessagesList) {
-            printMessage(msg);
+    private static void saveMessages(MessageStore store) {
+        try {
+            store.saveToFile();
+            System.out.println("\nMessages saved to " + store.getFile().toAbsolutePath() + ".");
+        } catch (IOException e) {
+            System.out.println("\nCould not save the messages: " + e.getMessage());
         }
     }
 
     /**
-     * Prints a single stored message in detail.
+     * Reads the messages from the JSON file into the store.
      */
-    private static void printMessage(Message msg) {
-        System.out.println("\n--- Message Summary ---");
-        System.out.println("Message ID: " + msg.getMessageID());
-        System.out.println("Message Number: " + msg.getMessageNumber());
-        System.out.println("Message Hash: " + msg.getMessageHash());
-        System.out.println("Recipient: " + msg.getRecipientCell());
-        System.out.println("Message: " + msg.getMessageContent());
-        System.out.println("Status: " + msg.getMessageStatus());
+    private static void loadMessages(MessageStore store) {
+        try {
+            int loaded = store.loadFromFile();
+            if (loaded == 0) {
+                System.out.println("\nNo messages were found in " + store.getFile().toAbsolutePath() + ".");
+            } else {
+                System.out.println("\nLoaded " + loaded + " message(s) from " + store.getFile().toAbsolutePath() + ".");
+            }
+        } catch (IOException e) {
+            System.out.println("\nCould not load the messages: " + e.getMessage());
+        }
     }
 
     /**
