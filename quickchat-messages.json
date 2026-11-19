@@ -1,0 +1,29 @@
+[
+  {
+    "messageID": "1000000001",
+    "messageNumber": 1,
+    "senderCell": "",
+    "recipientCell": "+27834557896",
+    "messageContent": "Did you get the cake?",
+    "messageHash": "10:1:DIDCAKE",
+    "status": "Sent"
+  },
+  {
+    "messageID": "1000000002",
+    "messageNumber": 2,
+    "senderCell": "",
+    "recipientCell": "+27838884567",
+    "messageContent": "Where are you? You are late! I have asked you to be on time.",
+    "messageHash": "10:2:WHERETIME",
+    "status": "Stored"
+  },
+  {
+    "messageID": "1000000004",
+    "messageNumber": 4,
+    "senderCell": "0838884567",
+    "recipientCell": "+27838884567",
+    "messageContent": "It is dinner time!",
+    "messageHash": "10:4:ITTIME",
+    "status": "Sent"
+  }
+]

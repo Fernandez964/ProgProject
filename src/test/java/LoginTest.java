@@ -2,10 +2,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
-public class LoginTest {
 
-    
-    // --- Username Validation Tests ---
+public class LoginTest {
 
     @Test
     public void testCheckUserNameValid() {
@@ -21,8 +19,6 @@ public class LoginTest {
         assertFalse(login.checkUserName(), "Username over 5 characters without underscore should fail.");
     }
 
-    // --- Password Complexity Tests ---
-
     @Test
     public void testCheckPasswordComplexityValid() {
         Login login = new Login();
@@ -36,8 +32,6 @@ public class LoginTest {
         login.setPassword("password");
         assertFalse(login.checkPasswordComplexity(), "Simple password without uppercase, numbers, or special chars should fail.");
     }
-
-    // --- Cell Phone Validation Tests ---
 
     @Test
     public void testCheckCellPhoneNumberValid() {
@@ -59,8 +53,6 @@ public class LoginTest {
         login.setCellPhoneNumber("08966553");
         assertFalse(login.checkCellPhoneNumber(), "Local formatted or short cell number should fail.");
     }
-
-    // --- User Registration Messages Tests ---
 
     @Test
     public void testRegisterUserUsernameFailedMessage() {
@@ -89,8 +81,6 @@ public class LoginTest {
         String expected = "Username successfully captured.\nPassword successfully captured.\nCell number successfully captured.";
         assertEquals(expected, login.registerUser());
     }
-
-    // --- Login Verification & Status Tests ---
 
     @Test
     public void testLoginUserSuccess() {

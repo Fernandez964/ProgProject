@@ -17,12 +17,6 @@ public final class Json {
     private Json() {
     }
 
-    /**
-     * Escapes a value so it can be placed inside a JSON string literal.
-     *
-     * @param raw the text to escape, may be null.
-     * @return the escaped text without the surrounding quotes.
-     */
     public static String escape(String raw) {
         if (raw == null) {
             return "";
@@ -32,27 +26,13 @@ public final class Json {
         for (int i = 0; i < raw.length(); i++) {
             char c = raw.charAt(i);
             switch (c) {
-                case '"':
-                    sb.append("\\\"");
-                    break;
-                case '\\':
-                    sb.append("\\\\");
-                    break;
-                case '\n':
-                    sb.append("\\n");
-                    break;
-                case '\r':
-                    sb.append("\\r");
-                    break;
-                case '\t':
-                    sb.append("\\t");
-                    break;
-                case '\b':
-                    sb.append("\\b");
-                    break;
-                case '\f':
-                    sb.append("\\f");
-                    break;
+                case '"': sb.append("\\\""); break;
+                case '\\': sb.append("\\\\"); break;
+                case '\n': sb.append("\\n"); break;
+                case '\r': sb.append("\\r"); break;
+                case '\t': sb.append("\\t"); break;
+                case '\b': sb.append("\\b"); break;
+                case '\f': sb.append("\\f"); break;
                 default:
                     if (c < 0x20) {
                         sb.append("\\u")
@@ -68,25 +48,10 @@ public final class Json {
         return sb.toString();
     }
 
-    /**
-     * Wraps a value in quotes after escaping it.
-     *
-     * @param raw the text to quote, may be null.
-     * @return a complete JSON string literal.
-     */
     public static String quote(String raw) {
         return "\"" + escape(raw) + "\"";
     }
 
-    /**
-     * Parses a flat JSON object into a map of raw values.
-     *
-     * Numbers are returned as their literal text, strings are unescaped.
-     *
-     * @param json the object text, for example {@code {"messageID": "1234567890"}}.
-     * @return the key/value pairs in the order they appear.
-     * @throws IllegalArgumentException when the text is not a valid flat object.
-     */
     public static Map<String, String> parseObject(String json) {
         Map<String, String> values = new LinkedHashMap<>();
         if (json == null) {
@@ -151,13 +116,6 @@ public final class Json {
         }
     }
 
-    /**
-     * Extracts the objects of a JSON array.
-     *
-     * @param json the array text, for example {@code [{...}, {...}]}.
-     * @return the raw text of every object in the array, in order.
-     * @throws IllegalArgumentException when the text is not a valid array.
-     */
     public static List<String> parseArray(String json) {
         List<String> elements = new ArrayList<>();
         if (json == null) {
@@ -208,9 +166,6 @@ public final class Json {
         return elements;
     }
 
-    /**
-     * Moves the cursor past any whitespace.
-     */
     private static int skipWhitespace(String text, int index) {
         int i = index;
         while (i < text.length() && Character.isWhitespace(text.charAt(i))) {
@@ -219,12 +174,6 @@ public final class Json {
         return i;
     }
 
-    /**
-     * Reads a quoted string.
-     *
-     * @return the unescaped value and the index just after the closing quote.
-     * @throws IllegalArgumentException when the text does not start with a quote.
-     */
     private static Value readString(String text, int index) {
         if (index >= text.length() || text.charAt(index) != '"') {
             throw new IllegalArgumentException("Expected a quoted string in: " + text);
@@ -237,21 +186,11 @@ public final class Json {
             if (c == '\\' && i + 1 < text.length()) {
                 char escaped = text.charAt(i + 1);
                 switch (escaped) {
-                    case 'n':
-                        sb.append('\n');
-                        break;
-                    case 'r':
-                        sb.append('\r');
-                        break;
-                    case 't':
-                        sb.append('\t');
-                        break;
-                    case 'b':
-                        sb.append('\b');
-                        break;
-                    case 'f':
-                        sb.append('\f');
-                        break;
+                    case 'n': sb.append('\n'); break;
+                    case 'r': sb.append('\r'); break;
+                    case 't': sb.append('\t'); break;
+                    case 'b': sb.append('\b'); break;
+                    case 'f': sb.append('\f'); break;
                     case 'u':
                         if (i + 5 < text.length()) {
                             sb.append((char) Integer.parseInt(text.substring(i + 2, i + 6), 16));
@@ -274,9 +213,6 @@ public final class Json {
         throw new IllegalArgumentException("Unterminated string in: " + text);
     }
 
-    /**
-     * A parsed value together with the position that follows it.
-     */
     private static final class Value {
         private final String first;
         private final int second;

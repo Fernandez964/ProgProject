@@ -9,44 +9,35 @@ import java.util.Set;
  */
 public class Message {
 
-    /** Maximum number of characters allowed in a message (must be less than this). */
     public static final int MAX_MESSAGE_LENGTH = 250;
-
-    /** Maximum number of characters allowed in a message ID. */
     public static final int MAX_ID_LENGTH = 10;
 
-    /** Message IDs already issued in this run, so no two messages share one. */
     private static final Set<String> USED_MESSAGE_IDS = Collections.synchronizedSet(new HashSet<String>());
 
     private final String messageID;
     private final int messageNumber;
+    private final String senderCell;
     private final String recipientCell;
     private final String messageContent;
     private final String messageHash;
     private String messageStatus;
 
-    // Constructor
     public Message(int messageNumber, String recipientCell, String messageContent) {
-        this.messageNumber = messageNumber;
-        this.recipientCell = CellNumber.normalize(recipientCell);
-        this.messageContent = messageContent;
-        this.messageID = generateMessageID();
-        this.messageHash = buildMessageHash();
+        this(messageNumber, "", recipientCell, messageContent, null);
     }
 
-    /**
-     * Creates a message with a known message ID.
-     *
-     * This is used by the tests so the message hash can be asserted exactly.
-     * A local cell number is still normalised to the international format.
-     *
-     * @param messageNumber the number of the message.
-     * @param recipientCell the recipient cell number.
-     * @param messageContent the message text.
-     * @param messageID the message ID to use, a random one is used when it is missing.
-     */
+    public Message(int messageNumber, String senderCell, String recipientCell, String messageContent) {
+        this(messageNumber, senderCell, recipientCell, messageContent, null);
+    }
+
     public Message(int messageNumber, String recipientCell, String messageContent, String messageID) {
+        this(messageNumber, "", recipientCell, messageContent, messageID);
+    }
+
+    public Message(int messageNumber, String senderCell, String recipientCell,
+                   String messageContent, String messageID) {
         this.messageNumber = messageNumber;
+        this.senderCell = senderCell == null ? "" : senderCell.trim();
         this.recipientCell = CellNumber.normalize(recipientCell);
         this.messageContent = messageContent;
         this.messageID = (messageID == null || messageID.trim().isEmpty())
@@ -56,38 +47,16 @@ public class Message {
         USED_MESSAGE_IDS.add(this.messageID);
     }
 
-    /**
-     * Creates a message with a known message ID.
-     *
-     * @param messageNumber the number of the message.
-     * @param recipientCell the recipient cell number.
-     * @param messageContent the message text.
-     * @param messageID the message ID to use.
-     * @return the message with the given ID.
-     */
     public static Message withMessageId(int messageNumber, String recipientCell,
-                                         String messageContent, String messageID) {
-        return new Message(messageNumber, recipientCell, messageContent, messageID);
+                                        String messageContent, String messageID) {
+        return new Message(messageNumber, "", recipientCell, messageContent, messageID);
     }
 
-    /**
-     * Rebuilds a message that was read back from the JSON file.
-     *
-     * The stored ID and hash are kept as they are so a message keeps its
-     * identity between sessions, and the ID is registered as used so a new
-     * message can never be given the same one.
-     *
-     * @param messageID the stored message ID.
-     * @param messageNumber the stored message number.
-     * @param recipientCell the stored recipient cell number.
-     * @param messageContent the stored message text.
-     * @param messageHash the stored message hash.
-     * @param messageStatus the stored status.
-     */
-    private Message(String messageID, int messageNumber, String recipientCell,
+    private Message(String messageID, int messageNumber, String senderCell, String recipientCell,
                     String messageContent, String messageHash, String messageStatus) {
         this.messageID = messageID;
         this.messageNumber = messageNumber;
+        this.senderCell = senderCell == null ? "" : senderCell.trim();
         this.recipientCell = CellNumber.normalize(recipientCell);
         this.messageContent = messageContent;
         this.messageHash = (messageHash == null || messageHash.isEmpty())
@@ -97,12 +66,6 @@ public class Message {
         USED_MESSAGE_IDS.add(messageID);
     }
 
-    /**
-     * Builds a message from the JSON object produced by {@link #storeMessageJSON()}.
-     *
-     * @param json a single message object.
-     * @return the restored message, or null when the object is missing required fields.
-     */
     public static Message fromJSON(String json) {
         Map<String, String> values;
         try {
@@ -127,13 +90,15 @@ public class Message {
             return null;
         }
 
+        String sender = values.get("senderCell");
+        if (sender == null) {
+            sender = values.get("developer");
+        }
         String status = values.get("status");
-        return new Message(messageID, number, recipientCell, messageContent, values.get("messageHash"), status);
+        return new Message(messageID, number, sender, recipientCell,
+                messageContent, values.get("messageHash"), status);
     }
 
-    /**
-     * Generates a random 10-digit message ID string that has not been used before.
-     */
     private String generateMessageID() {
         Random rand = new Random();
         String id;
@@ -143,59 +108,33 @@ public class Message {
         return id;
     }
 
-    /**
-     * Ensures that the message ID is not more than ten characters.
-     */
     public boolean checkMessageID() {
         return messageID != null && messageID.length() <= MAX_ID_LENGTH;
     }
 
-    /**
-     * Ensures that the recipient cell number uses the international format (+27
-     * followed by 9 digits). The rule is shared with the registration check via
-     * {@link CellNumber}, so a number accepted at registration is accepted here.
-     */
     public boolean checkRecipientCell() {
         return CellNumber.isValid(recipientCell);
     }
 
-    /**
-     * Validates message length requirement (250 characters or less).
-     */
     public boolean checkMessageLength() {
         return messageContent != null && messageContent.length() <= MAX_MESSAGE_LENGTH;
     }
 
-    /**
-     * Returns the message shown when the text is too long.
-     *
-     * @return the sentence that states by how many characters the message is too long.
-     */
     public String lengthExceededMessage() {
         int excess = messageContent == null ? 0 : messageContent.length() - MAX_MESSAGE_LENGTH;
         return "Message exceeds 250 characters by " + excess + " characters; please reduce the size.";
     }
 
-    /**
-     * Creates and returns the Message Hash in all caps:
-     * Format: [first 2 numbers of ID]:[message number]:[FIRST and LAST word of message]
-     */
     public String createMessageHash() {
         return buildMessageHash();
     }
 
-    /**
-     * Builds the message hash. Kept separate from {@link #createMessageHash()} so the
-     * constructor can call it without exposing a partially built object to subclasses.
-     */
     private String buildMessageHash() {
         if (messageID == null || messageID.length() < 2 || messageContent == null) {
             return "";
         }
 
         String prefix = messageID.substring(0, 2);
-
-        // Extract first and last words
         String[] words = messageContent.trim().split("\\s+");
         if (words.length == 0 || (words.length == 1 && words[0].isEmpty())) {
             return prefix + ":" + messageNumber + ":";
@@ -203,25 +142,16 @@ public class Message {
 
         String firstWord = cleanWord(words[0]);
         String lastWord = cleanWord(words[words.length - 1]);
-
-        // A single word message contributes that word once, not twice
         String combinedWords = words.length == 1 ? firstWord : firstWord + lastWord;
 
         return prefix + ":" + messageNumber + ":" + combinedWords.toUpperCase();
     }
 
-    /**
-     * Removes punctuation from a word while keeping letters and digits.
-     * Falls back to the unpunctuated word when it contains no letters or digits.
-     */
     private String cleanWord(String word) {
         String cleaned = word.replaceAll("[^a-zA-Z0-9]", "");
         return cleaned.isEmpty() ? word : cleaned;
     }
 
-    /**
-     * Allows the user to choose if they want to send, store, or disregard the message.
-     */
     public String sentMessage(int choice) {
         switch (choice) {
             case 1:
@@ -239,16 +169,11 @@ public class Message {
         }
     }
 
-    /**
-     * Stores the message in a JSON format representation (Research requirement).
-     *
-     * Every value is escaped so the result stays valid JSON even when the
-     * message text contains quotes or line breaks.
-     */
     public String storeMessageJSON() {
         return "{\n" +
                "  \"messageID\": \"" + Json.escape(messageID) + "\",\n" +
                "  \"messageNumber\": " + messageNumber + ",\n" +
+               "  \"senderCell\": \"" + Json.escape(senderCell) + "\",\n" +
                "  \"recipientCell\": \"" + Json.escape(recipientCell) + "\",\n" +
                "  \"messageContent\": \"" + Json.escape(messageContent) + "\",\n" +
                "  \"messageHash\": \"" + Json.escape(messageHash) + "\",\n" +
@@ -256,9 +181,9 @@ public class Message {
                "}";
     }
 
-    // Getters
     public String getMessageID() { return messageID; }
     public int getMessageNumber() { return messageNumber; }
+    public String getSenderCell() { return senderCell; }
     public String getRecipientCell() { return recipientCell; }
     public String getMessageContent() { return messageContent; }
     public String getMessageHash() { return messageHash; }

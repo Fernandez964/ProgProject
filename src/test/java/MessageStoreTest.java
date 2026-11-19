@@ -26,10 +26,10 @@ public class MessageStoreTest {
         store.recordMessage(sent);
         store.recordMessage(stored);
 
-        assertEquals(2, store.returnTotalMessages(), "Both messages should be counted.");
-        assertEquals(1, store.getSentMessages().size(), "One message was sent.");
-        assertEquals(1, store.getStoredMessages().size(), "One message was stored.");
-        assertEquals(2, store.getMessages().size(), "Both messages are kept in the store.");
+        assertEquals(2, store.returnTotalMessages());
+        assertEquals(1, store.getSentMessages().size());
+        assertEquals(1, store.getStoredMessages().size());
+        assertEquals(2, store.getMessages().size());
     }
 
     @Test
@@ -41,8 +41,8 @@ public class MessageStoreTest {
 
         store.recordMessage(disregarded);
 
-        assertEquals(1, store.returnTotalMessages(), "The message was processed.");
-        assertTrue(store.getMessages().isEmpty(), "A disregarded message is not kept.");
+        assertEquals(1, store.returnTotalMessages());
+        assertTrue(store.getMessages().isEmpty());
     }
 
     @Test
@@ -59,23 +59,23 @@ public class MessageStoreTest {
         store.recordMessage(stored);
         store.saveToFile();
 
-        assertTrue(Files.exists(file), "The message file should be created.");
+        assertTrue(Files.exists(file));
 
         MessageStore loadedStore = new MessageStore(file);
         int loaded = loadedStore.loadFromFile();
 
-        assertEquals(2, loaded, "Both messages should be read back.");
-        assertEquals(2, loadedStore.returnTotalMessages(), "The total should match the messages that were read.");
-        assertEquals(1, loadedStore.getSentMessages().size(), "One message was sent.");
-        assertEquals(1, loadedStore.getStoredMessages().size(), "One message was stored.");
+        assertEquals(2, loaded);
+        assertEquals(2, loadedStore.returnTotalMessages());
+        assertEquals(1, loadedStore.getSentMessages().size());
+        assertEquals(1, loadedStore.getStoredMessages().size());
 
         Message loadedSent = loadedStore.getSentMessages().get(0);
-        assertEquals(sent.getMessageID(), loadedSent.getMessageID(), "The ID should survive the round trip.");
-        assertEquals(sent.getMessageNumber(), loadedSent.getMessageNumber(), "The number should survive the round trip.");
-        assertEquals(sent.getMessageHash(), loadedSent.getMessageHash(), "The hash should survive the round trip.");
-        assertEquals(sent.getRecipientCell(), loadedSent.getRecipientCell(), "The recipient should survive the round trip.");
-        assertEquals(sent.getMessageContent(), loadedSent.getMessageContent(), "The content should survive the round trip.");
-        assertEquals("Sent", loadedSent.getMessageStatus(), "The status should survive the round trip.");
+        assertEquals(sent.getMessageID(), loadedSent.getMessageID());
+        assertEquals(sent.getMessageNumber(), loadedSent.getMessageNumber());
+        assertEquals(sent.getMessageHash(), loadedSent.getMessageHash());
+        assertEquals(sent.getRecipientCell(), loadedSent.getRecipientCell());
+        assertEquals(sent.getMessageContent(), loadedSent.getMessageContent());
+        assertEquals("Sent", loadedSent.getMessageStatus());
     }
 
     @Test
@@ -89,9 +89,9 @@ public class MessageStoreTest {
         store.saveToFile();
 
         String content = Files.readString(file, StandardCharsets.UTF_8);
-        assertTrue(content.trim().startsWith("["), "The file should hold a JSON array.");
-        assertTrue(content.trim().endsWith("]"), "The file should hold a JSON array.");
-        assertEquals(1, Json.parseArray(content).size(), "The file should hold one message object.");
+        assertTrue(content.trim().startsWith("["));
+        assertTrue(content.trim().endsWith("]"));
+        assertEquals(1, Json.parseArray(content).size());
     }
 
     @Test
@@ -106,17 +106,16 @@ public class MessageStoreTest {
         store.saveToFile();
 
         MessageStore loadedStore = new MessageStore(file);
-        assertEquals(1, loadedStore.loadFromFile(), "The message should be read back.");
-        assertEquals(content, loadedStore.getMessages().get(0).getMessageContent(),
-                "Quotes and line breaks should survive the round trip.");
+        assertEquals(1, loadedStore.loadFromFile());
+        assertEquals(content, loadedStore.getMessages().get(0).getMessageContent());
     }
 
     @Test
     public void testLoadFromMissingFileReturnsNothing() throws Exception {
         MessageStore store = new MessageStore(tempDir.resolve("missing.json"));
 
-        assertEquals(0, store.loadFromFile(), "A missing file should not fail.");
-        assertEquals(0, store.returnTotalMessages(), "A missing file should not add messages.");
+        assertEquals(0, store.loadFromFile());
+        assertEquals(0, store.returnTotalMessages());
     }
 
     @Test
@@ -129,9 +128,9 @@ public class MessageStoreTest {
 
         String output = captureOutput(store::printMessages);
 
-        assertTrue(output.contains(sent.getMessageID()), "The message ID should be printed.");
-        assertTrue(output.contains("Hello there"), "The message content should be printed.");
-        assertTrue(output.contains("Sent"), "The status should be printed.");
+        assertTrue(output.contains(sent.getMessageID()));
+        assertTrue(output.contains("Hello there"));
+        assertTrue(output.contains("Sent"));
     }
 
     @Test
@@ -140,12 +139,9 @@ public class MessageStoreTest {
 
         String output = captureOutput(store::printMessages);
 
-        assertTrue(output.contains("No messages have been sent yet."), "An empty store should say so.");
+        assertTrue(output.contains("No messages have been sent yet."));
     }
 
-    /**
-     * Runs the given action while the standard output is captured.
-     */
     private String captureOutput(Runnable action) {
         PrintStream originalOut = System.out;
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();

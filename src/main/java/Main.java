@@ -1,13 +1,11 @@
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Scanner;
 
 public class Main {
 
-    /** Number of login attempts allowed before the program ends. */
     private static final int MAX_LOGIN_ATTEMPTS = 3;
-
-    /** File the messages are written to and read from. */
     private static final Path MESSAGE_FILE = Path.of(MessageStore.DEFAULT_FILE_NAME);
 
     public static void main(String[] args) {
@@ -18,9 +16,6 @@ public class Main {
         }
     }
 
-    /**
-     * Runs the registration, login and messaging flow.
-     */
     private static void run(Scanner scanner) {
         Login user = new Login();
 
@@ -33,7 +28,6 @@ public class Main {
 
         System.out.println("\n" + user.registerUser());
 
-        // Proceed to login only if registration succeeds
         if (!user.checkUserName() || !user.checkPasswordComplexity() || !user.checkCellPhoneNumber()) {
             System.out.println("\nRegistration failed. Please rerun the program and correct errors.");
             return;
@@ -55,45 +49,104 @@ public class Main {
             System.out.println("1) Send Messages");
             System.out.println("2) Show recently sent messages");
             System.out.println("3) Save messages to file");
-            System.out.println("4) Load messages from file");
-            System.out.println("5) Quit");
+            System.out.println("4) Stored Messages");
+            System.out.println("5) Load messages from file");
+            System.out.println("6) Quit");
 
-            int choice = readMenuChoice(scanner, "Choose an option: ", 1, 5);
+            int choice = readMenuChoice(scanner, "Choose an option: ", 1, 6);
 
             switch (choice) {
                 case 1:
-                    captureMessages(scanner, store);
+                    captureMessages(scanner, store, user.getCellPhoneNumber());
                     System.out.println("\nTotal number of messages processed: " + store.returnTotalMessages());
                     break;
-
                 case 2:
                     store.printMessages();
                     break;
-
                 case 3:
                     saveMessages(store);
                     break;
-
                 case 4:
+                    showStoredMessagesMenu(scanner, store);
+                    break;
+                case 5:
                     loadMessages(store);
                     break;
-
-                case 5:
+                case 6:
                     running = false;
                     System.out.println("Thank you for using QuickChat. Goodbye!");
                     break;
-
                 default:
-                    System.out.println("Invalid choice. Please select 1, 2, 3, 4 or 5.");
+                    System.out.println("Invalid choice. Please select 1, 2, 3, 4, 5 or 6.");
             }
         }
     }
 
-    /**
-     * Guides the user through the login process, allowing a few attempts.
-     *
-     * @return true when the user logged in, false when the attempts were used up.
-     */
+    private static void showStoredMessagesMenu(Scanner scanner, MessageStore store) {
+        boolean inSubMenu = true;
+
+        while (inSubMenu) {
+            System.out.println("\n--- STORED MESSAGES MENU ---");
+            System.out.println("a) Display sender and recipient of all stored messages");
+            System.out.println("b) Display the longest stored message");
+            System.out.println("c) Search for a message by Message ID");
+            System.out.println("d) Search for all messages sent or stored for a particular recipient");
+            System.out.println("e) Delete a message using its Message Hash");
+            System.out.println("f) Display report of stored/sent messages");
+            System.out.println("x) Return to main menu");
+
+            String option = readLine(scanner, "Choose an option (a-f or x): ").toLowerCase();
+
+            switch (option) {
+                case "a":
+                    System.out.println("\n" + store.getStoredSendersAndRecipients());
+                    break;
+                case "b":
+                    String longest = store.getLongestStoredMessage();
+                    if (longest.isEmpty()) {
+                        System.out.println("\nNo stored messages available.");
+                    } else {
+                        System.out.println("\nLongest Stored Message:\n" + longest);
+                    }
+                    break;
+                case "c":
+                    String searchId = readLine(scanner, "Enter Message ID to search: ");
+                    Message found = store.findMessageById(searchId);
+                    if (found == null) {
+                        System.out.println("\nNo message found with ID: " + searchId);
+                    } else {
+                        System.out.println("\nRecipient : " + found.getRecipientCell());
+                        System.out.println("Message   : " + found.getMessageContent());
+                    }
+                    break;
+                case "d":
+                    String targetRecipient = readLine(scanner, "Enter recipient cell number: ");
+                    List<String> matches = store.searchMessagesByRecipient(targetRecipient);
+                    if (matches.isEmpty()) {
+                        System.out.println("\nNo sent or stored messages found for " + targetRecipient + ".");
+                    } else {
+                        System.out.println("\nMessages for " + targetRecipient + ":");
+                        for (int i = 0; i < matches.size(); i++) {
+                            System.out.println((i + 1) + ". " + matches.get(i));
+                        }
+                    }
+                    break;
+                case "e":
+                    String hashToDelete = readLine(scanner, "Enter Message Hash to delete: ");
+                    System.out.println("\n" + store.deleteMessageByHash(hashToDelete));
+                    break;
+                case "f":
+                    System.out.println("\n" + store.buildMessageReport());
+                    break;
+                case "x":
+                    inSubMenu = false;
+                    break;
+                default:
+                    System.out.println("Invalid option. Please choose a, b, c, d, e, f, or x.");
+            }
+        }
+    }
+
     private static boolean login(Scanner scanner, Login user) {
         for (int attempt = 1; attempt <= MAX_LOGIN_ATTEMPTS; attempt++) {
             System.out.println("\n=== USER LOGIN ===");
@@ -117,17 +170,13 @@ public class Main {
         return false;
     }
 
-    /**
-     * Captures the requested number of messages, validating each one before it is accepted.
-     */
-    private static void captureMessages(Scanner scanner, MessageStore store) {
+    private static void captureMessages(Scanner scanner, MessageStore store, String senderCell) {
         int numMessages = readInt(scanner, "How many messages do you wish to enter? ", 1, Integer.MAX_VALUE);
         int captured = 0;
 
         while (captured < numMessages) {
             System.out.println("\n--- Enter Message " + (captured + 1) + " ---");
 
-            // Check recipient cell validation before asking for the message text
             String recipient = readLine(scanner, "Enter Recipient Cell Number (e.g. +27838968976): ");
             if (!CellNumber.isValid(recipient)) {
                 System.out.println("Cell phone number is incorrectly formatted or does not contain an international code. Please correct the number and try again.");
@@ -136,9 +185,8 @@ public class Main {
             System.out.println("Cell phone number successfully captured.");
 
             String msgText = readRawLine(scanner, "Enter Message (max 250 characters): ");
-            Message msg = new Message(store.returnTotalMessages() + 1, recipient, msgText);
+            Message msg = new Message(store.returnTotalMessages() + 1, senderCell, recipient, msgText);
 
-            // Check message length validation
             if (!msg.checkMessageLength()) {
                 System.out.println(msg.lengthExceededMessage());
                 continue;
@@ -147,7 +195,6 @@ public class Main {
             System.out.println("\nMessage ID generated: " + msg.getMessageID());
             System.out.println("Message Hash: " + msg.getMessageHash());
 
-            // Send / Store / Disregard options
             System.out.println("\nChoose action for this message:");
             System.out.println("1) Send Message");
             System.out.println("2) Disregard Message");
@@ -158,26 +205,22 @@ public class Main {
             System.out.println(actionResult);
 
             if (!"Sent".equals(msg.getMessageStatus()) && !"Stored".equals(msg.getMessageStatus())) {
-                // Disregarded messages are only kept when the user confirms the deletion
                 readInt(scanner, "Press 0 to delete the message: ", 0, 0);
             }
 
             store.recordMessage(msg);
             captured++;
 
-            // Display full summary of the message
             System.out.println("\n--- Message Summary ---");
             System.out.println("Message ID: " + msg.getMessageID());
             System.out.println("Message Hash: " + msg.getMessageHash());
+            System.out.println("Sender: " + msg.getSenderCell());
             System.out.println("Recipient: " + msg.getRecipientCell());
             System.out.println("Message: " + msg.getMessageContent());
             System.out.println("Status: " + msg.getMessageStatus());
         }
     }
 
-    /**
-     * Writes the messages of the store to the JSON file.
-     */
     private static void saveMessages(MessageStore store) {
         try {
             store.saveToFile();
@@ -187,9 +230,6 @@ public class Main {
         }
     }
 
-    /**
-     * Reads the messages from the JSON file into the store.
-     */
     private static void loadMessages(MessageStore store) {
         try {
             int loaded = store.loadFromFile();
@@ -203,16 +243,10 @@ public class Main {
         }
     }
 
-    /**
-     * Reads a line of text and trims surrounding whitespace.
-     */
     private static String readLine(Scanner scanner, String prompt) {
         return readRawLine(scanner, prompt).trim();
     }
 
-    /**
-     * Reads a line of text exactly as it was typed.
-     */
     private static String readRawLine(Scanner scanner, String prompt) {
         System.out.print(prompt);
         if (!scanner.hasNextLine()) {
@@ -221,9 +255,6 @@ public class Main {
         return scanner.nextLine();
     }
 
-    /**
-     * Reads a number within the given range, re-prompting until the input is valid.
-     */
     private static int readInt(Scanner scanner, String prompt, int min, int max) {
         while (true) {
             System.out.print(prompt);
@@ -244,9 +275,6 @@ public class Main {
         }
     }
 
-    /**
-     * Reads a menu choice, returning -1 when the input is not a valid option.
-     */
     private static int readMenuChoice(Scanner scanner, String prompt, int min, int max) {
         System.out.print(prompt);
         if (!scanner.hasNextLine()) {
@@ -266,9 +294,6 @@ public class Main {
         return -1;
     }
 
-    /**
-     * Thrown when the input stream ends before the user finished entering data.
-     */
     private static class EndOfInputException extends RuntimeException {
         private static final long serialVersionUID = 1L;
     }
